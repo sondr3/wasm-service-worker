@@ -1,0 +1,35 @@
+[package]
+name = "wasm-service-worker"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+wasm-bindgen = "0.2.105"
+wasm-bindgen-futures = "0.4.55"
+serde = { version = "1.0", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3.82"
+
+[dependencies.web-sys]
+version = "0.3.4"
+features = [
+    "console",
+    "Clients",
+    "ExtendableEvent",
+    "ExtendableMessageEvent",
+    "Location",
+    "Navigator",
+    "Node",
+    "Window",
+    "RegistrationOptions",
+    "ServiceWorkerGlobalScope",
+    "ServiceWorkerRegistration",
+    "ServiceWorkerState",
+    "ServiceWorker",
+    "ServiceWorkerContainer",
+    "Url",
+]
