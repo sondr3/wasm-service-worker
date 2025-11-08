@@ -5,8 +5,12 @@ if ("serviceWorker" in navigator) {
 	navigator.serviceWorker
 		.register(swPath, {
 			type: "module",
+			updateViaCache: "none",
 		})
 		.then((registration) => {
+			// Force check for updates on every page load
+			registration.update()
+
 			let serviceWorker
 			if (registration.installing) {
 				serviceWorker = registration.installing
@@ -23,6 +27,7 @@ if ("serviceWorker" in navigator) {
 				serviceWorker.addEventListener("statechange", (e) => {
 					console.log((e as any).target.state)
 				})
+				serviceWorker.postMessage("hello, world")
 			}
 		})
 		.catch((error) => {
