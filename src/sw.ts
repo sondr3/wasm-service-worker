@@ -6,9 +6,9 @@ console.log("Service worker script loaded, initializing WASM...")
 // Initialize the WASM module
 // @ts-ignore
 init()
-  .then(() => {
-    console.log("Service worker WASM initialized successfully")
-  })
-  .catch((err: unknown) => {
-    console.error("Failed to initialize service worker WASM:", err)
-  })
+	.then(() => {
+		console.log("Service worker WASM initialized successfully")
+	})
+	.catch((err: unknown) => {
+		console.error("Failed to initialize service worker WASM:", err)
+	})
