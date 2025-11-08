@@ -1,20 +1,33 @@
-import { defineConfig } from 'vite';
-import wasm from 'vite-plugin-wasm';
-import basicSsl from "@vitejs/plugin-basic-ssl"
+import { readFileSync } from "node:fs"
+import { defineConfig } from "vite"
+import wasm from "vite-plugin-wasm"
 export default defineConfig({
   build: {
-    target: "esnext"
+    target: "esnext",
+    rollupOptions: {
+      input: {
+        main: "./index.html",
+        sw: "./src/sw.ts",
+      },
+      output: {
+        entryFileNames: (chunkInfo) => {
+          return chunkInfo.name === "sw" ? "sw.js" : "assets/[name]-[hash].js"
+        },
+      },
+    },
   },
-  plugins: [basicSsl(), wasm()],
+  plugins: [wasm()],
   worker: {
-    plugins: () => [
-      wasm()
-    ]
+    plugins: () => [wasm()],
   },
   server: {
+    https: {
+      key: readFileSync("./localhost-key.pem"),
+      cert: readFileSync("./localhost.pem"),
+    },
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
     },
   },
-});
+})

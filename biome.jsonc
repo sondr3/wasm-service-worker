@@ -1,0 +1,15 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"extends": ["@sondr3/biome"],
+	"files": {
+		"includes": ["./*.js", "./index.html", "./*.json", "!target/**", "!node_modules/**"]
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}
