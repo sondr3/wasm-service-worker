@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      htmx.org:
+        specifier: 4.0.0-alpha1
+        version: 4.0.0-alpha1
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.4
@@ -390,6 +394,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  htmx.org@4.0.0-alpha1:
+    resolution: {integrity: sha512-/KZHNM8Qjxp8yIzVDwZUNzSNSE4/GgR8/RSsV+CqeSQaWEbnUzdMcqiw2dG7ZSIzUghYtYU+lOj/7VF4cQfMhQ==}
 
   lightningcss-android-arm64@1.30.2:
     resolution: {integrity: sha512-BH9sEdOCahSgmkVhBLeU7Hc9DWeZ1Eb6wNS6Da8igvUwAe0sqROHddIlvU06q3WyXVEOYDZ6ykBZQnjTbmo4+A==}
@@ -776,6 +783,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  htmx.org@4.0.0-alpha1: {}
 
   lightningcss-android-arm64@1.30.2:
     optional: true

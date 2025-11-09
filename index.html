@@ -14,6 +14,15 @@
         <button id="test-fetch">Test Fetch (will be cached)</button>
     </div>
 
+    <button hx-post="/clicked"
+      hx-trigger="click"
+      hx-target="#out"
+      hx-swap="innerHTML">
+        Click Me!
+    </button>
+    <div id="out"></div>
+
     <script type="module" src="/src/main.ts"></script>
+    <script src="/htmx.min.js"></script>
   </body>
 </html>

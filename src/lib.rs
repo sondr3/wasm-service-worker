@@ -5,9 +5,10 @@ use axum::{
     body::to_bytes,
     extract::State,
     response::{Html, Response},
-    routing::get,
+    routing::{get, post},
 };
 use http::{Request, StatusCode, request::Builder};
+use js_sys::JsString;
 use tower_service::Service;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -25,6 +26,8 @@ const STATIC_ASSETS: &[&str] = &[
     "/styles.css",
     "/app.js",
     "/offline.html",
+    "/htmx.min.js",
+    "/htmx.js",
 ];
 
 #[wasm_bindgen]
@@ -109,6 +112,7 @@ struct AppState {
 static ROUTER: LazyLock<Router> = LazyLock::new(|| {
     Router::new()
         .route("/hello", get(index))
+        .route("/clicked", post(index))
         .with_state(AppState {
             counter: Arc::new(Mutex::new(0)),
         })
@@ -124,7 +128,10 @@ async fn index(state: State<AppState>) -> Html<String> {
     let mut counter = state.counter.lock().expect("mutex was poisoned");
     *counter += 1;
 
-    let res = format!("<h1>Hello, World!</h1>\n<p>Counter: {}</p>", counter);
+    let res = format!(
+        "<div><h1>Hello, World!</h1>\n<p>Counter: {}</p></div>",
+        counter
+    );
     Html(res)
 }
 
@@ -139,8 +146,13 @@ async fn fetch_handler(
 
     for header in request.headers().entries() {
         let header = header?;
-        let [name, val]: [String; 2] = serde_wasm_bindgen::from_value(header)?;
-        req = req.header(name, val);
+        let header = header.dyn_ref::<js_sys::Array>().unwrap();
+        if let (Some(name), Some(val)) = (
+            header.get(0).dyn_ref::<JsString>(),
+            header.get(1).dyn_ref::<JsString>(),
+        ) {
+            req = req.header::<String, String>(name.into(), val.into());
+        }
     }
 
     let req = req.body(body.as_string().unwrap()).unwrap();
