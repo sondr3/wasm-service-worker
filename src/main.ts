@@ -97,7 +97,7 @@ async function unregisterServiceWorker() {
 async function testFetch() {
 	try {
 		log("Testing fetch...")
-		const response = await fetch("/index.html")
+		const response = await fetch("/hello")
 
 		if (response.ok) {
 			log("✓ Fetch successful (check console to see if it came from cache)")

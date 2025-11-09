@@ -1,8 +1,16 @@
+use axum::{
+    Router,
+    body::to_bytes,
+    response::{Html, Response},
+    routing::get,
+};
+use http::{Request, StatusCode, request::Builder};
+use tower_service::Service;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    Cache, CacheStorage, ExtendableEvent, ExtendableMessageEvent, FetchEvent, Request, Response,
-    ServiceWorkerGlobalScope, console,
+    Cache, CacheStorage, ExtendableMessageEvent, FetchEvent, Headers, Request as JsRequest,
+    Response as JsResponse, ResponseInit, ServiceWorkerGlobalScope, console,
 };
 
 const CACHE_NAME: &str = "my-app-cache-v1";
@@ -19,7 +27,7 @@ const STATIC_ASSETS: &[&str] = &[
 #[wasm_bindgen]
 pub async fn handle_install() -> Result<JsValue, JsValue> {
     console_error_panic_hook::set_once();
-    web_sys::console::log_1(&"Service Worker installing...".into());
+    console::log_1(&"Service Worker installing...".into());
 
     let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
     install_handler(&global).await?;
@@ -29,7 +37,7 @@ pub async fn handle_install() -> Result<JsValue, JsValue> {
 
 #[wasm_bindgen]
 pub async fn handle_activate() -> Result<JsValue, JsValue> {
-    web_sys::console::log_1(&"Service Worker activating...".into());
+    console::log_1(&"Service Worker activating...".into());
 
     let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
     activate_handler(&global).await?;
@@ -38,7 +46,7 @@ pub async fn handle_activate() -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub async fn handle_fetch(event: FetchEvent) -> Result<Response, JsValue> {
+pub async fn handle_fetch(event: FetchEvent) -> Result<JsResponse, JsValue> {
     let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
     let request = event.request();
 
@@ -48,7 +56,7 @@ pub async fn handle_fetch(event: FetchEvent) -> Result<Response, JsValue> {
 #[wasm_bindgen]
 pub async fn handle_message(event: ExtendableMessageEvent) -> Result<JsValue, JsValue> {
     let data = event.data();
-    web_sys::console::log_2(&"Service Worker received message:".into(), &data);
+    console::log_2(&"Service Worker received message:".into(), &data);
     Ok(JsValue::NULL)
 }
 
@@ -58,22 +66,20 @@ async fn install_handler(global: &ServiceWorkerGlobalScope) -> Result<(), JsValu
 
     // Cache all static assets
     for asset in STATIC_ASSETS {
-        let request = Request::new_with_str(asset)?;
+        let request = JsRequest::new_with_str(asset)?;
 
         match fetch_and_cache(&cache, &request).await {
-            Ok(_) => web_sys::console::log_1(&format!("Cached: {}", asset).into()),
-            Err(e) => {
-                web_sys::console::error_1(&format!("Failed to cache {}: {:?}", asset, e).into())
-            }
+            Ok(_) => console::log_1(&format!("Cached: {}", asset).into()),
+            Err(e) => console::error_1(&format!("Failed to cache {}: {:?}", asset, e).into()),
         }
     }
 
-    web_sys::console::log_1(&"Service Worker installed!".into());
+    console::log_1(&"Service Worker installed!".into());
     Ok(())
 }
 
 async fn activate_handler(global: &ServiceWorkerGlobalScope) -> Result<(), JsValue> {
-    web_sys::console::log_1(&"Service Worker activating...".into());
+    console::log_1(&"Service Worker activating...".into());
 
     let cache_storage = global.caches()?;
     let cache_keys = JsFuture::from(cache_storage.keys()).await?;
@@ -83,46 +89,75 @@ async fn activate_handler(global: &ServiceWorkerGlobalScope) -> Result<(), JsVal
     for key in cache_keys.iter() {
         let cache_name = key.as_string().unwrap_or_default();
         if cache_name != CACHE_NAME {
-            web_sys::console::log_1(&format!("Deleting old cache: {}", cache_name).into());
+            console::log_1(&format!("Deleting old cache: {}", cache_name).into());
             JsFuture::from(cache_storage.delete(&cache_name)).await?;
         }
     }
 
-    web_sys::console::log_1(&"Service Worker activated!".into());
+    console::log_1(&"Service Worker activated!".into());
     Ok(())
+}
+
+#[allow(clippy::let_and_return)]
+async fn app(request: Request<String>) -> Response {
+    let mut router = Router::new().route("/hello", get(index));
+    let response = router.call(request).await.unwrap();
+    response
+}
+
+async fn index() -> Html<&'static str> {
+    Html("<h1>Hello, World!</h1>")
 }
 
 async fn fetch_handler(
     global: &ServiceWorkerGlobalScope,
-    request: &Request,
-) -> Result<Response, JsValue> {
-    let url = request.url();
-    let cache_storage = global.caches()?;
-    let cache = open_cache(&cache_storage, CACHE_NAME).await?;
+    request: &JsRequest,
+) -> Result<JsResponse, JsValue> {
+    let body = JsFuture::from(request.text()?).await?;
+    let mut req = Builder::new()
+        .uri(request.url())
+        .method(request.method().as_str());
 
-    // Try cache first
-    if let Ok(Some(cached_response)) = get_from_cache(&cache, request).await {
-        web_sys::console::log_1(&format!("Cache hit: {}", url).into());
-        return Ok(cached_response);
+    for header in request.headers().entries() {
+        let header = header?;
+        let [name, val]: [String; 2] = serde_wasm_bindgen::from_value(header)?;
+        req = req.header(name, val);
     }
 
-    // Fallback to network
-    web_sys::console::log_1(&format!("Cache miss, fetching: {}", url).into());
+    let req = req.body(body.as_string().unwrap()).unwrap();
+    console::log_1(&format!("req: {:?}", req).into());
 
-    match fetch_from_network(global, request).await {
-        Ok(response) => Ok(response),
-        Err(e) => {
-            web_sys::console::error_1(&format!("Network fetch failed: {:?}", e).into());
+    let resp = app(req).await;
+    console::log_1(&format!("resp: {:?}", resp).into());
 
-            // Return offline page if we have it
-            let offline_request = Request::new_with_str("/offline.html")?;
-            if let Ok(Some(offline_response)) = get_from_cache(&cache, &offline_request).await {
-                return Ok(offline_response);
+    if resp.status() == StatusCode::NOT_FOUND {
+        let url = request.url();
+        console::log_1(&format!("Cache miss, fetching: {}", url).into());
+
+        return match fetch_from_network(global, request).await {
+            Ok(response) => Ok(response),
+            Err(e) => {
+                console::error_1(&format!("Network fetch failed: {:?}", e).into());
+                Err(e)
             }
-
-            Err(e)
-        }
+        };
     }
+
+    let init = ResponseInit::new();
+    init.set_status(resp.status().as_u16());
+
+    let headers = Headers::new()?;
+    for (name, value) in resp.headers() {
+        headers.append(name.as_str(), value.to_str().unwrap())?;
+    }
+
+    init.set_headers(&headers);
+    let mut body = to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap()
+        .to_vec();
+    let js_resp = JsResponse::new_with_opt_u8_array_and_init(Some(&mut *body), &init)?;
+    Ok(js_resp)
 }
 
 async fn open_cache(cache_storage: &CacheStorage, name: &str) -> Result<Cache, JsValue> {
@@ -131,7 +166,10 @@ async fn open_cache(cache_storage: &CacheStorage, name: &str) -> Result<Cache, J
     Ok(cache.into())
 }
 
-async fn get_from_cache(cache: &Cache, request: &Request) -> Result<Option<Response>, JsValue> {
+async fn _get_from_cache(
+    cache: &Cache,
+    request: &JsRequest,
+) -> Result<Option<JsResponse>, JsValue> {
     let response_promise = cache.match_with_request(request);
     let response = JsFuture::from(response_promise).await?;
 
@@ -144,14 +182,14 @@ async fn get_from_cache(cache: &Cache, request: &Request) -> Result<Option<Respo
 
 async fn fetch_from_network(
     global: &ServiceWorkerGlobalScope,
-    request: &Request,
-) -> Result<Response, JsValue> {
+    request: &JsRequest,
+) -> Result<JsResponse, JsValue> {
     let response_promise = global.fetch_with_request(request);
     let response = JsFuture::from(response_promise).await?;
     Ok(response.into())
 }
 
-async fn fetch_and_cache(cache: &Cache, request: &Request) -> Result<(), JsValue> {
+async fn fetch_and_cache(cache: &Cache, request: &JsRequest) -> Result<(), JsValue> {
     // We need the global scope to fetch
     let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
     let response = fetch_from_network(&global, request).await?;
