@@ -21,10 +21,12 @@ export default defineConfig({
 		plugins: () => [wasm()],
 	},
 	server: {
-		https: {
-			key: readFileSync("./localhost-key.pem"),
-			cert: readFileSync("./localhost.pem"),
-		},
+		https: process.env.CI
+			? undefined
+			: {
+					key: readFileSync("./localhost-key.pem"),
+					cert: readFileSync("./localhost.pem"),
+				},
 		headers: {
 			"Cross-Origin-Opener-Policy": "same-origin",
 			"Cross-Origin-Embedder-Policy": "require-corp",
