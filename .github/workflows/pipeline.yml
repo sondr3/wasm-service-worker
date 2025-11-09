@@ -1,0 +1,39 @@
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      
+      - uses: pnpm/action-setup@v4.2.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          cache: "pnpm"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install and build
+        run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: cargo build --release
+
+      - name: bindgen 
+        run: wasm-bindgen ./target/wasm32-unknown-unknown/release/wasm_service_worker.wasm --out-dir ./src/pkg --typescript --target web
+      
+      - name: build
+        run: pnpm build
+
