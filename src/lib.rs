@@ -1,3 +1,5 @@
+use std::sync::{LazyLock, OnceLock};
+
 use axum::{
     Router,
     body::to_bytes,
@@ -98,10 +100,11 @@ async fn activate_handler(global: &ServiceWorkerGlobalScope) -> Result<(), JsVal
     Ok(())
 }
 
+static ROUTER: LazyLock<Router> = LazyLock::new(|| Router::new().route("/hello", get(index)));
+
 #[allow(clippy::let_and_return)]
 async fn app(request: Request<String>) -> Response {
-    let mut router = Router::new().route("/hello", get(index));
-    let response = router.call(request).await.unwrap();
+    let response = ROUTER.clone().call(request).await.unwrap();
     response
 }
 
@@ -125,15 +128,10 @@ async fn fetch_handler(
     }
 
     let req = req.body(body.as_string().unwrap()).unwrap();
-    console::log_1(&format!("req: {:?}", req).into());
-
     let resp = app(req).await;
-    console::log_1(&format!("resp: {:?}", resp).into());
 
     if resp.status() == StatusCode::NOT_FOUND {
-        let url = request.url();
-        console::log_1(&format!("Cache miss, fetching: {}", url).into());
-
+        console::log_1(&"router did not match".into());
         return match fetch_from_network(global, request).await {
             Ok(response) => Ok(response),
             Err(e) => {
