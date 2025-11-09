@@ -13,10 +13,6 @@ export default defineConfig({
 				entryFileNames: (chunkInfo) => {
 					return chunkInfo.name === "sw" ? "sw.js" : "assets/[name]-[hash].js"
 				},
-				format: (chunkInfo) => {
-					// Service worker must be IIFE for Firefox compatibility
-					return chunkInfo.name === "sw" ? "iife" : "es"
-				},
 			},
 		},
 	},

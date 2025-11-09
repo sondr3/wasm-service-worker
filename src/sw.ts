@@ -1,10 +1,7 @@
-// Service Worker entry point that initializes the WASM module
-// // Import the WASM module
 import init, { handle_install, handle_activate, handle_fetch, handle_message } from "./pkg/wasm_service_worker.js"
-
-// Initialize WASM module
 let wasmReady = init()
 
+declare let self: ServiceWorkerGlobalScope
 self.addEventListener("install", (event) => {
 	console.log("Install event triggered")
 	console.dir(event)
