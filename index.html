@@ -15,19 +15,5 @@
     </div>
 
     <script type="module" src="/src/main.ts"></script>
-    <script type="module">
-      document.getElementById('fetch-btn').addEventListener('click', async () => {
-        const resultDiv = document.getElementById('result');
-        resultDiv.textContent = 'Fetching...';
-
-        try {
-          const response = await fetch('https://api.github.com/zen');
-          const text = await response.text();
-          resultDiv.textContent = `Response: ${text}`;
-        } catch (error) {
-          resultDiv.textContent = `Error: ${error.message}`;
-        }
-      });
-    </script>
   </body>
 </html>
