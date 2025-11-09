@@ -4,13 +4,13 @@ let wasmReady = init()
 declare let self: ServiceWorkerGlobalScope
 self.addEventListener("install", (event) => {
 	console.log("Install event triggered")
-	console.dir(event)
 	event.waitUntil(wasmReady.then(() => handle_install()))
+	self.skipWaiting()
 })
 
 self.addEventListener("activate", (event) => {
 	console.log("Activate event triggered")
-	event.waitUntil(wasmReady.then(() => handle_activate()))
+	event.waitUntil(wasmReady.then(() => handle_activate()).then(() => self.clients.claim()))
 })
 
 self.addEventListener("fetch", (event) => {
