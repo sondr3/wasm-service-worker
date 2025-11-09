@@ -4,6 +4,11 @@
 	"files": {
 		"includes": ["./*.js", "./index.html", "./*.json", "!target/**", "!node_modules/**", "!public/**"]
 	},
+	"html": {
+		"formatter": {
+			"enabled": true
+		}
+	},
 	"assist": {
 		"enabled": true,
 		"actions": {

@@ -1,28 +1,43 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rust + WASM + Axum + Service Workers</title>
-  </head>
-  <body>
-    <div id="kind">Loading...</div>
-    <div class="controls">
-        <button id="register-btn">Register Service Worker</button>
-        <button id="unregister-btn">Unregister Service Worker</button>
-        <button id="test-fetch">Test Fetch (will be cached)</button>
-    </div>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="color-scheme" content="light dark">
+		<title>Rust + WASM + Axum + Service Workers</title>
+		<link rel="stylesheet" href="/pico.min.css">
+	</head>
+	<body>
+		<header>
+			<nav>
+				<ul>
+					<li>
+						<strong>HTMX Axum</strong>
+					</li>
+				</ul>
+				<ul>
+					<li>
+						<a href="/" class="contrast">Home</a>
+					</li>
+					<li>
+						<a href="/hello" class="contrast">Hello</a>
+					</li>
+				</ul>
+			</nav>
+		</header>
+		<main class="container">
+			<div id="kind">Loading...</div>
+			<div class="controls">
+				<button id="register-btn">Register Service Worker</button>
+				<button id="unregister-btn">Unregister Service Worker</button>
+				<button id="test-fetch">Test Fetch (will be cached)</button>
+			</div>
 
-    <button hx-post="/clicked"
-      hx-trigger="click"
-      hx-target="#out"
-      hx-swap="innerHTML">
-        Click Me!
-    </button>
-    <div id="out"></div>
-
-    <script type="module" src="/src/main.ts"></script>
-    <script src="/htmx.min.js"></script>
-  </body>
+			<button hx-post="/clicked" hx-trigger="click" hx-target="#out" hx-swap="innerHTML">Click Me!</button>
+			<div id="out"></div>
+		</main>
+		<footer>Footer</footer>
+		<script type="module" src="/src/main.ts"></script>
+		<script src="/htmx.min.js"></script>
+	</body>
 </html>

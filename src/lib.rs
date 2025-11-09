@@ -28,6 +28,7 @@ const STATIC_ASSETS: &[&str] = &[
     "/offline.html",
     "/htmx.min.js",
     "/htmx.js",
+    "/pico.min.css",
 ];
 
 #[wasm_bindgen]
