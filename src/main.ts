@@ -20,7 +20,7 @@ async function registerServiceWorker() {
 		updateStatus("Registering...")
 
 		// Note: The service worker file is an ES module that imports WASM
-		const swPath = import.meta.env.DEV ? "/src/sw.ts" : "/sw.js"
+		const swPath = import.meta.env.DEV ? "/src/sw.ts" : `${import.meta.env.BASE_URL}sw.js`
 		const registration = await navigator.serviceWorker.register(swPath, {
 			type: "module", // Important: ES module support
 			scope: "/",
