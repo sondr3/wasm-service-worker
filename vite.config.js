@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { defineConfig } from "vite"
 import wasm from "vite-plugin-wasm"
 export default defineConfig({
-	base: process.env.CI ? undefined : process.env.VITE_BASE_PATH,
+	base: process.env.CI ? process.env.VITE_BASE_PATH : undefined,
 	build: {
 		target: "esnext",
 		rollupOptions: {
