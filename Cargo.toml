@@ -46,3 +46,6 @@ features = [
     "Window",
     "console",
 ]
+
+[profile.release]
+strip = true
