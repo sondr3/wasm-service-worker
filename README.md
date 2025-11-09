@@ -27,6 +27,11 @@ the request fall through.
 4. ???
 5. Profit or pain
 
+## Inspiration
+
+- https://github.com/richardanaya/wasm-service
+- https://github.com/justinrubek/wasm-bindgen-service-worker
+
 # License 
 
 MIT.
