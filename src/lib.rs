@@ -1,8 +1,9 @@
-use std::sync::{LazyLock, OnceLock};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use axum::{
     Router,
     body::to_bytes,
+    extract::State,
     response::{Html, Response},
     routing::get,
 };
@@ -100,7 +101,18 @@ async fn activate_handler(global: &ServiceWorkerGlobalScope) -> Result<(), JsVal
     Ok(())
 }
 
-static ROUTER: LazyLock<Router> = LazyLock::new(|| Router::new().route("/hello", get(index)));
+#[derive(Clone)]
+struct AppState {
+    counter: Arc<Mutex<usize>>,
+}
+
+static ROUTER: LazyLock<Router> = LazyLock::new(|| {
+    Router::new()
+        .route("/hello", get(index))
+        .with_state(AppState {
+            counter: Arc::new(Mutex::new(0)),
+        })
+});
 
 #[allow(clippy::let_and_return)]
 async fn app(request: Request<String>) -> Response {
@@ -108,8 +120,12 @@ async fn app(request: Request<String>) -> Response {
     response
 }
 
-async fn index() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
+async fn index(state: State<AppState>) -> Html<String> {
+    let mut counter = state.counter.lock().expect("mutex was poisoned");
+    *counter += 1;
+
+    let res = format!("<h1>Hello, World!</h1>\n<p>Counter: {}</p>", counter);
+    Html(res)
 }
 
 async fn fetch_handler(
