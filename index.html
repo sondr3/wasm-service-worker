@@ -8,8 +8,28 @@
   </head>
   <body>
     <div id="kind">Loading...</div>
+    <button id="fetch-btn">Test Fetch</button>
+    <div id="result"></div>
+
+        <div class="controls">
+            <button id="register-btn">Register Service Worker</button>
+            <button id="unregister-btn">Unregister Service Worker</button>
+            <button id="test-fetch">Test Fetch (will be cached)</button>
+        </div>
     <script type="module" src="/src/main.ts"></script>
     <script type="module">
+      document.getElementById('fetch-btn').addEventListener('click', async () => {
+        const resultDiv = document.getElementById('result');
+        resultDiv.textContent = 'Fetching...';
+
+        try {
+          const response = await fetch('https://api.github.com/zen');
+          const text = await response.text();
+          resultDiv.textContent = `Response: ${text}`;
+        } catch (error) {
+          resultDiv.textContent = `Error: ${error.message}`;
+        }
+      });
     </script>
   </body>
 </html>

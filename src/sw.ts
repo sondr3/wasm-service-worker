@@ -1,27 +1,28 @@
 // Service Worker entry point that initializes the WASM module
-import init from "./pkg/wasm_service_worker.js"
+// // Import the WASM module
+import init, { handle_install, handle_activate, handle_fetch, handle_message } from "./pkg/wasm_service_worker.js"
 
-console.log("Service worker script loaded, initializing WASM...")
+// Initialize WASM module
+let wasmReady = init()
 
-// Event handlers MUST be registered synchronously during initial script evaluation
 self.addEventListener("install", (event) => {
-	console.log("Service worker installing...")
-	// @ts-ignore
-	self.skipWaiting()
+	console.log("Install event triggered")
+	console.dir(event)
+	event.waitUntil(wasmReady.then(() => handle_install()))
 })
 
 self.addEventListener("activate", (event) => {
-	console.log("Service worker activating...")
-	// @ts-ignore
-	event.waitUntil(self.clients.claim())
+	console.log("Activate event triggered")
+	event.waitUntil(wasmReady.then(() => handle_activate()))
 })
 
-// Initialize the WASM module
-// @ts-ignore
-init()
-	.then(() => {
-		console.log("Service worker WASM initialized successfully")
-	})
-	.catch((err: unknown) => {
-		console.error("Failed to initialize service worker WASM:", err)
-	})
+self.addEventListener("fetch", (event) => {
+	event.respondWith(wasmReady.then(() => handle_fetch(event)))
+})
+
+self.addEventListener("message", (event) => {
+	console.log("Message event triggered")
+	event.waitUntil(wasmReady.then(() => handle_message(event)))
+})
+
+console.log("Service Worker script loaded")
