@@ -35,6 +35,26 @@
 
 			<button hx-post="/clicked" hx-trigger="click" hx-target="#out" hx-swap="innerHTML">Click Me!</button>
 			<div id="out"></div>
+
+			<form
+				hx-post="/form"
+				hx-target="#form-out"
+				hx-swap="innerHTML"
+				hx-on::after-request="if(event.detail.successful) this.reset()"
+			>
+				<label for="name">
+					Enter your name:
+					<input type="text" name="name">
+				</label>
+
+				<label>
+					Enter your email:
+					<input type="text" name="email">
+				</label>
+
+				<input type="submit" value="Subscribe!">
+			</form>
+			<div id="form-out"></div>
 		</main>
 		<footer>Footer</footer>
 		<script type="module" src="/src/main.ts"></script>

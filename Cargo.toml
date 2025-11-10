@@ -13,7 +13,7 @@ wasm-bindgen-futures = "0.4.55"
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 js-sys = "0.3.82"
-axum = { version = "0.8.6", default-features = false }
+axum = { version = "0.8.6", default-features = false, features = ["form"] }
 http = "1.3.1"
 tower-service = "0.3.3"
 http-serde = "2.1.1"

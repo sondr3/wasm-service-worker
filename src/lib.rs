@@ -1,7 +1,7 @@
 use std::sync::{Arc, LazyLock, Mutex};
 
 use axum::{
-    Router,
+    Form, Router,
     body::{Body, to_bytes},
     extract::State,
     response::{Html, Response},
@@ -9,6 +9,7 @@ use axum::{
 };
 use http::{Request, StatusCode, request::Builder};
 use js_sys::JsString;
+use serde::Deserialize;
 use tower_service::Service;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -111,6 +112,7 @@ struct AppState {
 static ROUTER: LazyLock<Router> = LazyLock::new(|| {
     Router::new()
         .route("/hello", get(index))
+        .route("/form", post(accept_form))
         .route("/clicked", post(index))
         .with_state(AppState {
             counter: Arc::new(Mutex::new(0)),
@@ -121,6 +123,21 @@ static ROUTER: LazyLock<Router> = LazyLock::new(|| {
 async fn app(request: Request<Body>) -> Response {
     let response = ROUTER.clone().call(request).await.unwrap();
     response
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+struct Input {
+    name: String,
+    email: String,
+}
+
+async fn accept_form(Form(input): Form<Input>) -> Html<String> {
+    dbg!(&input);
+    Html(format!(
+        "email='{}'\nname='{}'\n",
+        &input.email, &input.name
+    ))
 }
 
 async fn index(state: State<AppState>) -> Html<String> {
