@@ -1,12 +1,12 @@
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::LazyLock;
 
 use askama::Template;
 use axum::{
-    Form, Router,
+    Router,
     body::{Body, to_bytes},
-    extract::{Path, State},
+    extract::Form,
     response::{Html, Response},
-    routing::post,
+    routing::{get, post},
 };
 use http::{Request, StatusCode, request::Builder};
 use js_sys::JsString;
@@ -25,24 +25,28 @@ pub async fn handle_fetch(request: JsRequest) -> Result<JsResponse, JsValue> {
     fetch_handler(&global, &request).await
 }
 
-#[derive(Clone)]
-struct AppState {
-    counter: Arc<Mutex<usize>>,
-}
-
 static ROUTER: LazyLock<Router> = LazyLock::new(|| {
     Router::new()
+        .route("/form", get(form))
         .route("/form", post(accept_form))
-        .route("/{name}/clicked", post(index))
-        .with_state(AppState {
-            counter: Arc::new(Mutex::new(0)),
-        })
+        .route("/hello", get(hello))
+        .route("/hello", post(hello_partial))
 });
 
 #[allow(clippy::let_and_return)]
 async fn app(request: Request<Body>) -> Response {
     let response = ROUTER.clone().call(request).await.unwrap();
     response
+}
+
+async fn form() -> Html<String> {
+    #[derive(Debug, Template)]
+    #[template(path = "form.html")]
+    struct Template {}
+
+    let temp = Template {};
+
+    Html(temp.render().unwrap())
 }
 
 #[derive(Deserialize, Debug)]
@@ -60,21 +64,30 @@ async fn accept_form(Form(input): Form<Input>) -> Html<String> {
     ))
 }
 
-async fn index(Path((name,)): Path<(String,)>, state: State<AppState>) -> Html<String> {
-    let mut counter = state.counter.lock().expect("mutex was poisoned");
-    *counter += 1;
-
+async fn hello() -> Html<String> {
     #[derive(Debug, Template)]
     #[template(path = "hello.html")]
+    struct Template {}
+
+    let temp = Template {};
+
+    Html(temp.render().unwrap())
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+struct HelloInput {
+    name: String,
+}
+
+async fn hello_partial(Form(input): Form<HelloInput>) -> Html<String> {
+    #[derive(Debug, Template)]
+    #[template(path = "hello_partial.html")]
     struct Template {
         name: String,
-        counter: usize,
     }
 
-    let temp = Template {
-        name,
-        counter: *counter,
-    };
+    let temp = Template { name: input.name };
 
     Html(temp.render().unwrap())
 }

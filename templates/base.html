@@ -28,14 +28,15 @@
 				</ul>
 			</nav>
 		</header>
-		<main>
+		<main >
 			<div id="kind">Loading...</div>
 			<div class="controls">
 				<button id="register-btn">Register Service Worker</button>
 				<button id="unregister-btn">Unregister Service Worker</button>
 			</div>
+
+      {% block content %}{% endblock %}
 		</main>
-		<footer>Footer</footer>
 		<script type="module" src="/src/main.ts"></script>
 		<script src="/htmx.min.js"></script>
 	</body>
