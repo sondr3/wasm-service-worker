@@ -1,17 +1,16 @@
 use std::sync::{Arc, LazyLock, Mutex};
 
-// use axum::{
-//     Router,
-//     body::to_bytes,
-//     extract::State,
-//     response::{Html, Response},
-//     routing::{get, post},
-// };
-// use http::{Method, Request, StatusCode, request::Builder};
-// use js_sys::JsString;
-use matchit::Router as MatchitRouter;
-// use tower_service::Service;
-use url::Url;
+use axum::{
+    Router,
+    body::to_bytes,
+    extract::State,
+    response::{Html, Response},
+    routing::{get, post},
+};
+use http::{Method, Request, StatusCode, request::Builder};
+use js_sys::JsString;
+use serde::{Deserialize, Serialize};
+use tower_service::Service;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
@@ -54,13 +53,21 @@ pub async fn handle_activate() -> Result<JsValue, JsValue> {
     Ok(JsValue::NULL)
 }
 
-#[wasm_bindgen]
-pub async fn handle_fetch(event: FetchEvent) -> Result<JsResponse, JsValue> {
-    let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
-    let request = event.request();
+#[derive(Serialize, Deserialize, Debug)]
+struct MyRequest {
+    #[serde(with = "http_serde::method")]
+    method: http::method::Method,
+    #[serde(with = "http_serde::uri")]
+    url: http::Uri,
+    headers: Vec<(String, String)>,
+    body: String,
+}
 
-    // fetch_handler(&global, &request).await
-    matchit_fetch_handler(&global, &request).await
+#[wasm_bindgen]
+pub async fn handle_fetch(orig: JsRequest, request: JsValue) -> Result<JsResponse, JsValue> {
+    let request: MyRequest = serde_wasm_bindgen::from_value(request)?;
+    let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
+    fetch_handler(&global, &orig, request).await
 }
 
 #[wasm_bindgen]
@@ -113,144 +120,73 @@ struct AppState {
     counter: Arc<Mutex<usize>>,
 }
 
-// static ROUTER: LazyLock<Router> = LazyLock::new(|| {
-//     Router::new()
-//         .route("/hello", get(index))
-//         .route("/clicked", post(index))
-//         .with_state(AppState {
-//             counter: Arc::new(Mutex::new(0)),
-//         })
-// });
-//
-struct MyRouter {
-    state: AppState,
-    get: MatchitRouter<String>,
-    post: MatchitRouter<String>,
+static ROUTER: LazyLock<Router> = LazyLock::new(|| {
+    Router::new()
+        .route("/hello", get(index))
+        .route("/clicked", post(index))
+        .with_state(AppState {
+            counter: Arc::new(Mutex::new(0)),
+        })
+});
+
+#[allow(clippy::let_and_return)]
+async fn app(request: Request<String>) -> Response {
+    let response = ROUTER.clone().call(request).await.unwrap();
+    response
 }
 
-fn matchit_index(state: &AppState) -> String {
+async fn index(state: State<AppState>) -> Html<String> {
     let mut counter = state.counter.lock().expect("mutex was poisoned");
     *counter += 1;
 
-    format!(
+    let res = format!(
         "<div><h1>Hello, World!</h1>\n<p>Counter: {}</p></div>",
         counter
-    )
+    );
+    Html(res)
 }
 
-static MATCHIT_ROUTER: LazyLock<MyRouter> = LazyLock::new(|| {
-    let mut router = MyRouter {
-        state: AppState {
-            counter: Arc::new(Mutex::new(0)),
-        },
-        get: MatchitRouter::new(),
-        post: MatchitRouter::new(),
-    };
-
-    router
-        .get
-        .insert("/hello", matchit_index(&router.state))
-        .unwrap();
-
-    router
-        .post
-        .insert("/clicked", matchit_index(&router.state))
-        .unwrap();
-
-    router
-});
-
-// #[allow(clippy::let_and_return)]
-// async fn app(request: Request<String>) -> Response {
-//     let response = ROUTER.clone().call(request).await.unwrap();
-//     response
-// }
-//
-// async fn index(state: State<AppState>) -> Html<String> {
-//     let mut counter = state.counter.lock().expect("mutex was poisoned");
-//     *counter += 1;
-//
-//     let res = format!(
-//         "<div><h1>Hello, World!</h1>\n<p>Counter: {}</p></div>",
-//         counter
-//     );
-//     Html(res)
-// }
-
-async fn matchit_fetch_handler(
+async fn fetch_handler(
     global: &ServiceWorkerGlobalScope,
-    request: &JsRequest,
+    orig: &JsRequest,
+    request: MyRequest,
 ) -> Result<JsResponse, JsValue> {
-    // console::log_1(request);
-    let url = Url::parse(&request.url()).unwrap();
-    if let Some(resp) = match request.method().as_ref() {
-        "GET" => MATCHIT_ROUTER.get.at(url.path()).ok(),
-        "POST" => MATCHIT_ROUTER.post.at(url.path()).ok(),
-        _ => None,
-    } {
-        return JsResponse::new_with_opt_str(Some(resp.value));
+    let mut req = Builder::new().uri(&request.url).method(&request.method);
+
+    for (name, val) in &request.headers {
+        req = req.header(name, val);
     }
 
-    // console::log_1(&"router did not match".into());
-    return match fetch_from_network(global, request).await {
-        Ok(response) => Ok(response),
-        Err(e) => {
-            console::error_1(&format!("Network fetch failed: {:?}", e).into());
-            Err(e)
-        }
-    };
-}
+    let req = req.body(request.body).unwrap();
+    let resp = app(req).await;
 
-// async fn fetch_handler(
-//     global: &ServiceWorkerGlobalScope,
-//     request: &JsRequest,
-// ) -> Result<JsResponse, JsValue> {
-//     let body = JsFuture::from(request.text()?).await?;
-//     let mut req = Builder::new()
-//         .uri(request.url())
-//         .method(request.method().as_str());
-//
-//     for header in request.headers().entries() {
-//         let header = header?;
-//         let header = header.dyn_ref::<js_sys::Array>().unwrap();
-//         if let (Some(name), Some(val)) = (
-//             header.get(0).dyn_ref::<JsString>(),
-//             header.get(1).dyn_ref::<JsString>(),
-//         ) {
-//             req = req.header::<String, String>(name.into(), val.into());
-//         }
-//     }
-//
-//     let req = req.body(body.as_string().unwrap()).unwrap();
-//     let resp = app(req).await;
-//
-//     if resp.status() == StatusCode::NOT_FOUND {
-//         console::log_1(&"router did not match".into());
-//         return match fetch_from_network(global, request).await {
-//             Ok(response) => Ok(response),
-//             Err(e) => {
-//                 console::error_1(&format!("Network fetch failed: {:?}", e).into());
-//                 Err(e)
-//             }
-//         };
-//     }
-//
-//     let init = ResponseInit::new();
-//     init.set_status(resp.status().as_u16());
-//
-//     let headers = Headers::new()?;
-//     for (name, value) in resp.headers() {
-//         headers.append(name.as_str(), value.to_str().unwrap())?;
-//     }
-//
-//     init.set_headers(&headers);
-//     let mut body = to_bytes(resp.into_body(), usize::MAX)
-//         .await
-//         .unwrap()
-//         .to_vec();
-//     let js_resp = JsResponse::new_with_opt_u8_array_and_init(Some(&mut *body), &init)?;
-//     Ok(js_resp)
-// }
+    if resp.status() == StatusCode::NOT_FOUND {
+        console::log_1(&"router did not match".into());
+        return match fetch_from_network(global, orig).await {
+            Ok(response) => Ok(response),
+            Err(e) => {
+                console::error_1(&format!("Network fetch failed: {:?}", e).into());
+                Err(e)
+            }
+        };
+    }
+
+    let init = ResponseInit::new();
+    init.set_status(resp.status().as_u16());
+
+    let headers = Headers::new()?;
+    for (name, value) in resp.headers() {
+        headers.append(name.as_str(), value.to_str().unwrap())?;
+    }
+
+    init.set_headers(&headers);
+    let mut body = to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap()
+        .to_vec();
+    let js_resp = JsResponse::new_with_opt_u8_array_and_init(Some(&mut *body), &init)?;
+    Ok(js_resp)
+}
 
 async fn open_cache(cache_storage: &CacheStorage, name: &str) -> Result<Cache, JsValue> {
     let cache_promise = cache_storage.open(name);
