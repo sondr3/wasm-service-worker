@@ -2,7 +2,7 @@
 	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
 	"extends": ["@sondr3/biome"],
 	"files": {
-		"includes": ["./*.js", "./index.html", "./*.json", "!target/**", "!node_modules/**", "!public/**"]
+		"includes": ["./*.js", "./index.html", "./*.json", "!target/**", "!node_modules/**", "!public/**", "!templates/**"]
 	},
 	"html": {
 		"formatter": {

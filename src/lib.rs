@@ -1,11 +1,12 @@
 use std::sync::{Arc, LazyLock, Mutex};
 
+use askama::Template;
 use axum::{
     Form, Router,
     body::{Body, to_bytes},
-    extract::State,
+    extract::{Path, State},
     response::{Html, Response},
-    routing::{get, post},
+    routing::post,
 };
 use http::{Request, StatusCode, request::Builder};
 use js_sys::JsString;
@@ -111,9 +112,8 @@ struct AppState {
 
 static ROUTER: LazyLock<Router> = LazyLock::new(|| {
     Router::new()
-        .route("/hello", get(index))
         .route("/form", post(accept_form))
-        .route("/clicked", post(index))
+        .route("/{name}/clicked", post(index))
         .with_state(AppState {
             counter: Arc::new(Mutex::new(0)),
         })
@@ -140,15 +140,23 @@ async fn accept_form(Form(input): Form<Input>) -> Html<String> {
     ))
 }
 
-async fn index(state: State<AppState>) -> Html<String> {
+async fn index(Path((name,)): Path<(String,)>, state: State<AppState>) -> Html<String> {
     let mut counter = state.counter.lock().expect("mutex was poisoned");
     *counter += 1;
 
-    let res = format!(
-        "<div><h1>Hello, World!</h1>\n<p>Counter: {}</p></div>",
-        counter
-    );
-    Html(res)
+    #[derive(Debug, Template)]
+    #[template(path = "hello.html")]
+    struct Template {
+        name: String,
+        counter: usize,
+    }
+
+    let temp = Template {
+        name,
+        counter: *counter,
+    };
+
+    Html(temp.render().unwrap())
 }
 
 async fn fetch_handler(

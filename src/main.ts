@@ -89,25 +89,8 @@ async function unregisterServiceWorker() {
 	}
 }
 
-async function testFetch() {
-	try {
-		log("Testing fetch...")
-		const response = await fetch("/hello")
-
-		if (response.ok) {
-			log("Fetch successful (check console to see if it came from cache)")
-		} else {
-			log(`Fetch failed: ${response.status}`)
-		}
-	} catch (error) {
-		const err = error as unknown as Error
-		log(`Fetch error: ${err.message}`)
-	}
-}
-
 document.getElementById("register-btn")!.addEventListener("click", registerServiceWorker)
 document.getElementById("unregister-btn")!.addEventListener("click", unregisterServiceWorker)
-document.getElementById("test-fetch")!.addEventListener("click", testFetch)
 
 async function checkServiceWorkerStatus() {
 	if (!("serviceWorker" in navigator)) {
