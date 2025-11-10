@@ -19,7 +19,7 @@ tower-service = "0.3.3"
 http-serde = "2.1.1"
 
 [dependencies.web-sys]
-version = "0.3.4"
+version = "0.3.82"
 features = [
     "Cache",
     "CacheStorage",

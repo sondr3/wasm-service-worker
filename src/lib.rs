@@ -2,19 +2,18 @@ use std::sync::{Arc, LazyLock, Mutex};
 
 use axum::{
     Router,
-    body::to_bytes,
+    body::{Body, to_bytes},
     extract::State,
     response::{Html, Response},
     routing::{get, post},
 };
-use http::{Method, Request, StatusCode, request::Builder};
+use http::{Request, StatusCode, request::Builder};
 use js_sys::JsString;
-use serde::{Deserialize, Serialize};
 use tower_service::Service;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    Cache, CacheStorage, ExtendableMessageEvent, FetchEvent, Headers, Request as JsRequest,
+    Cache, CacheStorage, ExtendableMessageEvent, Headers, Request as JsRequest,
     Response as JsResponse, ResponseInit, ServiceWorkerGlobalScope, console,
 };
 
@@ -53,21 +52,10 @@ pub async fn handle_activate() -> Result<JsValue, JsValue> {
     Ok(JsValue::NULL)
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct MyRequest {
-    #[serde(with = "http_serde::method")]
-    method: http::method::Method,
-    #[serde(with = "http_serde::uri")]
-    url: http::Uri,
-    headers: Vec<(String, String)>,
-    body: String,
-}
-
 #[wasm_bindgen]
-pub async fn handle_fetch(orig: JsRequest, request: JsValue) -> Result<JsResponse, JsValue> {
-    let request: MyRequest = serde_wasm_bindgen::from_value(request)?;
+pub async fn handle_fetch(request: JsRequest) -> Result<JsResponse, JsValue> {
     let global = js_sys::global().unchecked_into::<ServiceWorkerGlobalScope>();
-    fetch_handler(&global, &orig, request).await
+    fetch_handler(&global, &request).await
 }
 
 #[wasm_bindgen]
@@ -130,7 +118,7 @@ static ROUTER: LazyLock<Router> = LazyLock::new(|| {
 });
 
 #[allow(clippy::let_and_return)]
-async fn app(request: Request<String>) -> Response {
+async fn app(request: Request<Body>) -> Response {
     let response = ROUTER.clone().call(request).await.unwrap();
     response
 }
@@ -148,21 +136,31 @@ async fn index(state: State<AppState>) -> Html<String> {
 
 async fn fetch_handler(
     global: &ServiceWorkerGlobalScope,
-    orig: &JsRequest,
-    request: MyRequest,
+    request: &JsRequest,
 ) -> Result<JsResponse, JsValue> {
-    let mut req = Builder::new().uri(&request.url).method(&request.method);
+    let body = JsFuture::from(request.text()?).await?;
+    let body = Body::new(body.as_string().unwrap());
+    let mut req = Builder::new()
+        .uri(request.url())
+        .method(request.method().as_str());
 
-    for (name, val) in &request.headers {
-        req = req.header(name, val);
+    for header in request.headers().entries() {
+        let header = header?;
+        let header = header.dyn_ref::<js_sys::Array>().unwrap();
+        if let (Some(name), Some(val)) = (
+            header.get(0).dyn_ref::<JsString>(),
+            header.get(1).dyn_ref::<JsString>(),
+        ) {
+            req = req.header::<String, String>(name.into(), val.into());
+        }
     }
 
-    let req = req.body(request.body).unwrap();
+    let req = req.body(body).unwrap();
     let resp = app(req).await;
 
     if resp.status() == StatusCode::NOT_FOUND {
         console::log_1(&"router did not match".into());
-        return match fetch_from_network(global, orig).await {
+        return match fetch_from_network(global, request).await {
             Ok(response) => Ok(response),
             Err(e) => {
                 console::error_1(&format!("Network fetch failed: {:?}", e).into());
