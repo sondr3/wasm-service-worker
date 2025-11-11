@@ -1,9 +1,5 @@
 on: [push]
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,33 +34,16 @@ jobs:
       - name: bindgen 
         run: wasm-bindgen ./target/wasm32-unknown-unknown/release/wasm_service_worker.wasm --out-dir ./src/pkg --typescript --target web
       
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v5
-
       - name: build
         run: pnpm build
-        env:
-          VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
 
-      - name: Upload static files as artifact
-        id: deployment
-        uses: actions/upload-pages-artifact@v4
+      - name: Deploy
+        uses: burnett01/rsync-deployments@5.2
         with:
+          switches: -avzrh --delete
           path: dist/
-
-  deploy:
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
+          remote_path: ${{ secrets.DEPLOY_PATH }}
+          remote_host: ${{ secrets.DEPLOY_HOST }}
+          remote_user: ${{ secrets.DEPLOY_USER }}
+          remote_key: ${{ secrets.DEPLOY_KEY }}
+          remote_key_pass: ${{ secrets.DEPLOY_PASS }}
