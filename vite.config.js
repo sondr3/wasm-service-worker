@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs"
 import { defineConfig } from "vite"
-import wasm from "vite-plugin-wasm"
 export default defineConfig({
-	base: process.env.CI ? process.env.VITE_BASE_PATH : undefined,
 	build: {
 		target: "esnext",
 		rollupOptions: {
@@ -11,15 +9,10 @@ export default defineConfig({
 				sw: "./src/sw.ts",
 			},
 			output: {
-				entryFileNames: (chunkInfo) => {
-					return chunkInfo.name === "sw" ? "sw.js" : "assets/[name]-[hash].js"
-				},
+				entryFileNames: "[name].js",
+				assetFileNames: "[name].[ext]",
 			},
 		},
-	},
-	plugins: [wasm()],
-	worker: {
-		plugins: () => [wasm()],
 	},
 	server: {
 		https: process.env.CI
